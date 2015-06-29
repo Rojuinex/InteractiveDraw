@@ -1,1 +1,1 @@
-Create objects interactivley.
+Create objects interactively.
