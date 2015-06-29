@@ -36,7 +36,7 @@ def rayPlaneIntersection(P0, V, o, N):
     d = (o - P0).dot(N) / (V.dot(N))
     return d * V + P0
 
-class IDP_draw_prototype:
+class IDT_draw_prototype:
     """Prototype for all interactive draw functions"""
     _click_number = 0
     
@@ -61,9 +61,9 @@ class IDP_draw_prototype:
                     
         return ray_origin, view_vector
 
-class IDP_draw_line(IDP_draw_prototype, Operator):
+class IDT_draw_line(IDT_draw_prototype, Operator):
     """interactively draw a line"""
-    bl_idname = "curve.idp_draw_line"
+    bl_idname = "curve.idt_draw_line"
     bl_label = "Draw Line"
     
     _first_point = None
@@ -149,9 +149,9 @@ class IDP_draw_line(IDP_draw_prototype, Operator):
             self._curve_path.points[0].co = (fp.x, fp.y, fp.z, 1)
             self._curve_path.points[1].co = (lp.x, lp.y, lp.z, 1)
 
-class IDP_draw_triangle(IDP_draw_prototype, Operator):
+class IDT_draw_triangle(IDT_draw_prototype, Operator):
     """interactively draw a triangle"""
-    bl_idname = "curve.idp_draw_triangle"
+    bl_idname = "curve.idt_draw_triangle"
     bl_label = "Draw Triangle"
     
     _first_point  = None
@@ -249,9 +249,9 @@ class IDP_draw_triangle(IDP_draw_prototype, Operator):
                 self._curve_path.points[1].co = (sp.x, sp.y, sp.z, 1)
                 self._curve_path.points[2].co = (lp.x, lp.y, lp.z, 1)
 
-class IDP_draw_rectangle(IDP_draw_prototype, Operator):
+class IDT_draw_rectangle(IDT_draw_prototype, Operator):
     """interactively draw a rectangle"""
-    bl_idname = "curve.idp_draw_rectangle"
+    bl_idname = "curve.idt_draw_rectangle"
     bl_label = "Draw Rectangle"
     
     _first_point    = None
@@ -350,9 +350,9 @@ class IDP_draw_rectangle(IDP_draw_prototype, Operator):
                 self._curve_path.points[2].co = (lp.x, lp.y, lp.z, 1)
                 self._curve_path.points[3].co = (fp.x, lp.y, lp.z, 1)
 
-class IDP_draw_quad(IDP_draw_prototype, Operator):
+class IDT_draw_quad(IDT_draw_prototype, Operator):
     """interactively draw a quad"""
-    bl_idname = "curve.idp_draw_quad"
+    bl_idname = "curve.idt_draw_quad"
     bl_label = "Draw Quad"
     
     _first_point  = None
@@ -468,7 +468,7 @@ class InteractiveDrawPanel:
     bl_space_type  = 'VIEW_3D'
     bl_region_type = 'TOOLS'
     
-class VIEW3D_IDP_interactive_draw_shapes(InteractiveDrawPanel, Panel):
+class VIEW3D_IDT_draw_shapes_panel(InteractiveDrawPanel, Panel):
     bl_category = 'Interactive'
     bl_context  = "objectmode"
     bl_label    = "Draw Shapes"    
@@ -497,10 +497,10 @@ class VIEW3D_IDP_interactive_draw_shapes(InteractiveDrawPanel, Panel):
     def draw_add_curve(layout, label=False):
         if label:
             layout.label(text="Poly:")
-        layout.operator("curve.idp_draw_line", text="Line", icon='CURVE_PATH')
-        layout.operator("curve.idp_draw_triangle", text="Triangle", icon='EDITMODE_VEC_DEHLT')
-        layout.operator("curve.idp_draw_rectangle", text="Rectangle", icon='STICKY_UVS_VERT')
-        layout.operator("curve.idp_draw_quad", text="Quad", icon='EDIT_VEC')
+        layout.operator("curve.idt_draw_line", text="Line", icon='CURVE_PATH')
+        layout.operator("curve.idt_draw_triangle", text="Triangle", icon='EDITMODE_VEC_DEHLT')
+        layout.operator("curve.idt_draw_rectangle", text="Rectangle", icon='STICKY_UVS_VERT')
+        layout.operator("curve.idt_draw_quad", text="Quad", icon='EDIT_VEC')
         
 
     def draw(self, context):
@@ -514,7 +514,7 @@ class VIEW3D_IDP_interactive_draw_shapes(InteractiveDrawPanel, Panel):
         col.label(text="Curve:")
         self.draw_add_curve(col)
         
-class VIEW3D_IDP_interactive_draw_shapes_edit(InteractiveDrawPanel, Panel):
+class VIEW3D_IDT_draw_shapes_panel_edit(InteractiveDrawPanel, Panel):
     bl_category = "Interactive"
     bl_context  = "curve_edit"
     bl_label    = "Draw Shapes"
@@ -522,23 +522,23 @@ class VIEW3D_IDP_interactive_draw_shapes_edit(InteractiveDrawPanel, Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        VIEW3D_IDP_interactive_draw_shapes.draw_add_curve(col, label=True)
+        VIEW3D_IDT_draw_shapes_panel.draw_add_curve(col, label=True)
 
 def register():
-    bpy.utils.register_class(IDP_draw_line)
-    bpy.utils.register_class(IDP_draw_triangle)
-    bpy.utils.register_class(IDP_draw_rectangle)
-    bpy.utils.register_class(IDP_draw_quad)
-    bpy.utils.register_class(VIEW3D_IDP_interactive_draw_shapes)
-    bpy.utils.register_class(VIEW3D_IDP_interactive_draw_shapes_edit)
+    bpy.utils.register_class(IDT_draw_line)
+    bpy.utils.register_class(IDT_draw_triangle)
+    bpy.utils.register_class(IDT_draw_rectangle)
+    bpy.utils.register_class(IDT_draw_quad)
+    bpy.utils.register_class(VIEW3D_IDT_draw_shapes_panel)
+    bpy.utils.register_class(VIEW3D_IDT_draw_shapes_panel_edit)
     
 def unregister():
-    bpy.utils.unregister_class(IDP_draw_line)
-    bpy.utils.unregister_class(IDP_draw_triangle)
-    bpy.utils.unregister_class(IDP_draw_rectangle)
-    bpy.utils.unregister_class(IDP_draw_quad)
-    bpy.utils.unregister_class(VIEW3D_IDP_interactive_draw_shapes)
-    bpy.utils.unregister_class(VIEW3D_IDP_interactive_draw_shapes_edit)
+    bpy.utils.unregister_class(IDT_draw_line)
+    bpy.utils.unregister_class(IDT_draw_triangle)
+    bpy.utils.unregister_class(IDT_draw_rectangle)
+    bpy.utils.unregister_class(IDT_draw_quad)
+    bpy.utils.unregister_class(VIEW3D_IDT_draw_shapes_panel)
+    bpy.utils.unregister_class(VIEW3D_IDT_draw_shapes_panel_edit)
     
 if __name__ == "__main__":
     register()
