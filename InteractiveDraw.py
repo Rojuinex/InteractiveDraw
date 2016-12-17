@@ -9,8 +9,8 @@ bl_info = \
     {
         "name" : "Interactive Draw Tools",
         "author" : "Rojuinex <rojuinex@gmail.com>",
-        "version" : (0, 0, 4),
-        "blender" : (2, 7, 5),
+        "version" : (0, 0, 5),
+        "blender" : (2, 75, 0),
         "location" : "View 3D > Edit Mode > Tool Shelf",
         "description" : "Allows for the creation of objects interactively.",
         "warning" : "In development (Alpha)",
@@ -60,6 +60,10 @@ class IDT_draw_prototype:
             ray_origin.z = 0
                     
         return ray_origin, view_vector
+
+############################
+# Line Draw Functions
+############################
 
 class IDT_draw_line(IDT_draw_prototype, Operator):
     """interactively draw a line"""
@@ -259,7 +263,7 @@ class IDT_draw_rectangle(IDT_draw_prototype, Operator):
     _curve      = None
     _curve_data = None
     _curve_path = None
-    
+
     def modal(self, context, event):
         if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'}:
             # allow navagation
@@ -463,6 +467,278 @@ class IDT_draw_quad(IDT_draw_prototype, Operator):
                     self._curve_path.points[2].co = (tp.x, tp.y, tp.z, 1)
                     self._curve_path.points[3].co = (lp.x, lp.y, lp.z, 1)
 
+######################
+# Mesh Draw functions
+######################
+
+class IDT_draw_plane(IDT_draw_prototype, Operator):
+    """interactively draw a plane"""
+    bl_idname = "mesh.idt_draw_plane"
+    bl_label = "Draw Plane"
+    
+    _first_point = None
+    _last_point  = None
+    _mesh       = None
+    _mesh_data  = None
+    
+    def modal(self, context, event):
+        if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'}:
+            # allow navagation
+            return {'PASS_THROUGH'}
+        elif event.type == 'LEFTMOUSE' and event.value == 'RELEASE':
+            self.leftmouse(context, event)
+        elif event.type == 'MOUSEMOVE':
+            self.mousemove(context, event)
+        elif event.type in {'RIGHTMOUSE', 'ESC'}:
+            self.cleanup(context)
+            return {'CANCELLED'}
+        
+        if self._click_number == 2:
+            return {"FINISHED"}
+        
+        return {'RUNNING_MODAL'}
+    
+    def invoke(self, context, event):
+        if context.space_data.type == 'VIEW_3D':
+            context.window_manager.modal_handler_add(self)
+            
+            if context.mode == 'EDIT_MESH':
+                print('your mom')
+                #self._curve = context.object
+                #self._curve_data = self._curve.data
+                
+                #self._curve_path = self._curve_data.splines.new('POLY')
+                #self._curve_path.points.add(3)
+                #self._curve_path.use_cyclic_u = True
+                #self._curve_data.splines.active = self._curve_path
+            else:                    
+                self._mesh_data = bpy.data.meshes.new(name='Plane')
+                
+                self._mesh = bpy.data.objects.new('Plane', self._mesh_data)
+                self._mesh.location = (0,0,0)
+                bpy.context.scene.objects.link(self._mesh)
+                bpy.ops.object.select_all(action="DESELECT")
+                self._mesh.select = True
+                context.scene.objects.active = self._mesh
+                
+                self._mesh_data.from_pydata([(0,0,0),(0,0,0),(0,0,0),(0,0,0)],[],[(0,1,2,3)])
+
+            
+            return {'RUNNING_MODAL'}
+        else:
+            self.report({'WARNING'}, "Active space must be a View3d")
+            return {'CANCELLED'}
+        
+    def cleanup(self, context):
+        if self._mesh is not None:
+            if context.mode == 'EDIT_CURVE':
+                self._curve_data.splines.remove(self._curve_path)
+            else:
+                bpy.context.scene.objects.unlink(self._mesh)
+                bpy.data.objects.remove(self._mesh)
+                bpy.data.curves.remove(self._mesh_data)
+        
+    def leftmouse(self, context, event):
+        if self._last_point is not None:
+            self._click_number += 1
+            
+        if self._click_number == 1:
+            self._first_point = self._last_point
+
+    def mousemove(self, context, event):
+        o = Vector((0,0,0))
+        N = Vector((0,0,1))
+        self._last_point, view_normal = self.mousePlaneIntersection(context, event, o, N)
+        
+        if self._first_point is not None:
+            
+            fp = self._first_point
+            lp = self._last_point
+
+            self._mesh_data.vertices[0].co = (fp.x, fp.y, fp.z)
+            
+            if abs(view_normal.y) == 1:
+                self._mesh_data.vertices[1].co = (lp.x, lp.y, fp.z)
+                self._mesh_data.vertices[2].co = (lp.x, lp.y, lp.z)
+                self._mesh_data.vertices[3].co = (fp.x, lp.y, lp.z)
+            elif abs(view_normal.x) == 1:
+                self._mesh_data.vertices[1].co = (lp.x, lp.y, fp.z)
+                self._mesh_data.vertices[2].co = (lp.x, lp.y, lp.z)
+                self._mesh_data.vertices[3].co = (lp.x, fp.y, lp.z)
+            else:
+                self._mesh_data.vertices[1].co = (lp.x, fp.y, lp.z)
+                self._mesh_data.vertices[2].co = (lp.x, lp.y, lp.z)
+                self._mesh_data.vertices[3].co = (fp.x, lp.y, lp.z)
+
+
+class IDT_draw_cube(IDT_draw_prototype, Operator):
+    """interactively draw a cube"""
+    bl_idname = "mesh.idt_draw_cube"
+    bl_label = "Draw Cube"
+    
+    _first_point  = None
+    _second_point = None
+    _last_point   = None
+    _mesh         = None
+    _mesh_data   = None
+    _curve_path   = None
+    
+    def modal(self, context, event):
+        if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE'}:
+            # allow navagation
+            return {'PASS_THROUGH'}
+        elif event.type == 'LEFTMOUSE' and event.value == 'RELEASE':
+            self.leftmouse(context, event)
+        elif event.type == 'MOUSEMOVE':
+            self.mousemove(context, event)
+        elif event.type in {'RIGHTMOUSE', 'ESC'}:
+            self.cleanup(context)
+            return {'CANCELLED'}
+        
+        if self._click_number == 3:
+            return {"FINISHED"}
+        
+        return {'RUNNING_MODAL'}
+    
+    def invoke(self, context, event):
+        if context.space_data.type == 'VIEW_3D':
+            context.window_manager.modal_handler_add(self)
+            
+            if context.mode == 'EDIT_CURVE':
+                print('edit_curve')
+                #self._curve = context.object
+                #self._curve_data = self._curve.data
+                
+                #self._curve_path = self._curve_data.splines.new('POLY')
+                #self._curve_path.points.add(2)
+                #self._curve_path.use_cyclic_u = True
+                #self._curve_data.splines.active = self._curve_path
+            else:
+                self._mesh_data = bpy.data.meshes.new(name='Cube')
+                
+                self._mesh = bpy.data.objects.new('Cube', self._mesh_data)
+                self._mesh.location = (0,0,0)
+                bpy.context.scene.objects.link(self._mesh)
+                bpy.ops.object.select_all(action="DESELECT")
+                self._mesh.select = True
+                context.scene.objects.active = self._mesh
+
+                #
+                #        5───────6
+                #       ╱│      ╱│
+                #      ╱ │     ╱ │
+                #     4━━┿━━━━7  │
+                #     ┃  0────╂──1
+                #     ┃ ╱     ┃ ╱
+                #     ┃╱      ┃╱
+                #     3━━━━━━━2
+                #
+
+
+                verts = [
+                    (0,0,0), # [0] bottom north west
+                    (0,0,0), # [1] bottom north east
+                    (0,0,0), # [2] bottom south east
+                    (0,0,0), # [3] bottom south west
+                    (0,0,0), # [4] top south west
+                    (0,0,0), # [5] top north west
+                    (0,0,0), # [6] top north east
+                    (0,0,0)  # [7] top south east
+                ]
+
+                faces = [
+                    (0,3,2,1), # bottom
+                    (0,5,4,3),  # right
+                    (3,4,7,2),  # front
+                    (2,7,6,1),  # left
+                    (1,0,5,6),  # back
+                    (5,6,7,4)   # top
+                ]
+
+                self._mesh_data.from_pydata(verts, [], faces)
+            
+            return {'RUNNING_MODAL'}
+        else:
+            self.report({'WARNING'}, "Active space must be a View3d")
+            return {'CANCELLED'}
+        
+    def cleanup(self, context):
+        if self._mesh is not None:
+            if context.mode == 'EDIT_CURVE':
+                self._curve_data.splines.remove(self._curve_path)
+            else:
+                bpy.context.scene.objects.unlink(self._mesh)
+                bpy.data.objects.remove(self._mesh)
+                bpy.data.curves.remove(self._mesh_data)
+        
+    def leftmouse(self, context, event):
+        if self._last_point is not None:
+            self._click_number += 1
+            
+        if self._click_number == 1:
+            self._first_point = self._last_point
+        
+        if self._click_number == 2:
+            self._second_point = self._last_point
+
+    def mousemove(self, context, event):
+        o = Vector((0,0,0))
+        N = Vector((0,0,1))
+
+        if self._click_number == 2:
+           N = Vector((0,1,0))
+
+        self._last_point, view_normal = self.mousePlaneIntersection(context, event, o, N)
+        
+        if self._first_point is not None:
+            fp = self._first_point
+            lp = self._last_point
+
+            self._mesh_data.vertices[0].co = (fp.x, fp.y, fp.z)
+            self._mesh_data.vertices[5].co = (fp.x, fp.y, fp.z)
+
+            if self._second_point is None:
+                if abs(view_normal.y) == 1:
+                    # Top
+                    self._mesh_data.vertices[1].co = (lp.x, lp.y, fp.z)
+                    self._mesh_data.vertices[2].co = (lp.x, lp.y, lp.z)
+                    self._mesh_data.vertices[3].co = (fp.x, lp.y, lp.z)
+
+                    # Bottom
+                    self._mesh_data.vertices[6].co = (lp.x, lp.y, fp.z)
+                    self._mesh_data.vertices[7].co = (lp.x, lp.y, lp.z)
+                    self._mesh_data.vertices[4].co = (fp.x, lp.y, lp.z)
+                elif abs(view_normal.x) == 1:
+                    # Top
+                    self._mesh_data.vertices[1].co = (lp.x, lp.y, fp.z)
+                    self._mesh_data.vertices[2].co = (lp.x, lp.y, lp.z)
+                    self._mesh_data.vertices[3].co = (lp.x, fp.y, lp.z)
+
+                    # Bottom
+                    self._mesh_data.vertices[6].co = (lp.x, lp.y, fp.z)
+                    self._mesh_data.vertices[7].co = (lp.x, lp.y, lp.z)
+                    self._mesh_data.vertices[4].co = (lp.x, fp.y, lp.z)
+                else:
+                    # Top
+                    self._mesh_data.vertices[1].co = (lp.x, fp.y, lp.z)
+                    self._mesh_data.vertices[2].co = (lp.x, lp.y, lp.z)
+                    self._mesh_data.vertices[3].co = (fp.x, lp.y, lp.z)
+
+                    # Bottom
+                    self._mesh_data.vertices[6].co = (lp.x, fp.y, lp.z)
+                    self._mesh_data.vertices[7].co = (lp.x, lp.y, lp.z)
+                    self._mesh_data.vertices[4].co = (fp.x, lp.y, lp.z)
+            else:
+                sp = self._second_point
+            
+                self._mesh_data.vertices[4].co.z = lp.z
+                self._mesh_data.vertices[5].co.z = lp.z
+                self._mesh_data.vertices[6].co.z = lp.z
+                self._mesh_data.vertices[7].co.z = lp.z
+
+######################
+# Interface
+######################
 
 class InteractiveDrawPanel:
     bl_space_type  = 'VIEW_3D'
@@ -477,21 +753,22 @@ class VIEW3D_IDT_draw_shapes_panel(InteractiveDrawPanel, Panel):
     def draw_add_mesh(layout, label=False):
         if label:
             layout.label(text="Primitives:")
-        layout.operator("mesh.primitive_plane_add", text="Plane", icon='MESH_PLANE')
-        layout.operator("mesh.primitive_cube_add", text="Cube", icon='MESH_CUBE')
-        layout.operator("mesh.primitive_circle_add", text="Circle", icon='MESH_CIRCLE')
-        layout.operator("mesh.primitive_uv_sphere_add", text="UV Sphere", icon='MESH_UVSPHERE')
-        layout.operator("mesh.primitive_ico_sphere_add", text="Ico Sphere", icon='MESH_ICOSPHERE')
-        layout.operator("mesh.primitive_cylinder_add", text="Cylinder", icon='MESH_CYLINDER')
-        layout.operator("mesh.primitive_cone_add", text="Cone", icon='MESH_CONE')
-        layout.operator("mesh.primitive_torus_add", text="Torus", icon='MESH_TORUS')
 
-        if label:
-            layout.label(text="Special:")
-        else:
-            layout.separator()
-        layout.operator("mesh.primitive_grid_add", text="Grid", icon='MESH_GRID')
-        layout.operator("mesh.primitive_monkey_add", text="Monkey", icon='MESH_MONKEY')
+        layout.operator("mesh.idt_draw_plane", text="Plane", icon='MESH_PLANE')
+        layout.operator("mesh.idt_draw_cube", text="Cube", icon='MESH_CUBE')
+        #layout.operator("mesh.primitive_circle_add", text="Circle", icon='MESH_CIRCLE')
+        #layout.operator("mesh.primitive_uv_sphere_add", text="UV Sphere", icon='MESH_UVSPHERE')
+        #layout.operator("mesh.primitive_ico_sphere_add", text="Ico Sphere", icon='MESH_ICOSPHERE')
+        #layout.operator("mesh.primitive_cylinder_add", text="Cylinder", icon='MESH_CYLINDER')
+        #layout.operator("mesh.primitive_cone_add", text="Cone", icon='MESH_CONE')
+        #layout.operator("mesh.primitive_torus_add", text="Torus", icon='MESH_TORUS')
+
+        # if label:
+        #     layout.label(text="Special:")
+        # else:
+        #     layout.separator()
+        # layout.operator("mesh.primitive_grid_add", text="Grid", icon='MESH_GRID')
+        # layout.operator("mesh.primitive_monkey_add", text="Monkey", icon='MESH_MONKEY')
         
     @staticmethod
     def draw_add_curve(layout, label=False):
@@ -506,9 +783,9 @@ class VIEW3D_IDT_draw_shapes_panel(InteractiveDrawPanel, Panel):
     def draw(self, context):
         layout = self.layout
         
-        #col = layout.column(align=True)
-        #col.label(text="Mesh:")
-        #self.draw_add_mesh(col)
+        col = layout.column(align=True)
+        col.label(text="Mesh:")
+        self.draw_add_mesh(col)
         
         col = layout.column(align=True)
         col.label(text="Curve:")
@@ -529,6 +806,8 @@ def register():
     bpy.utils.register_class(IDT_draw_triangle)
     bpy.utils.register_class(IDT_draw_rectangle)
     bpy.utils.register_class(IDT_draw_quad)
+    bpy.utils.register_class(IDT_draw_plane)
+    bpy.utils.register_class(IDT_draw_cube)
     bpy.utils.register_class(VIEW3D_IDT_draw_shapes_panel)
     bpy.utils.register_class(VIEW3D_IDT_draw_shapes_panel_edit)
     
@@ -537,6 +816,8 @@ def unregister():
     bpy.utils.unregister_class(IDT_draw_triangle)
     bpy.utils.unregister_class(IDT_draw_rectangle)
     bpy.utils.unregister_class(IDT_draw_quad)
+    bpy.utils.unregister_class(IDT_draw_plane)
+    bpy.utils.unregister_class(IDT_draw_cube)
     bpy.utils.unregister_class(VIEW3D_IDT_draw_shapes_panel)
     bpy.utils.unregister_class(VIEW3D_IDT_draw_shapes_panel_edit)
     
